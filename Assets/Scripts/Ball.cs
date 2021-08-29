@@ -104,7 +104,7 @@ public class Ball : NetworkBehaviour
     private void OnTriggerEnter2D(Collider2D other) => OwnerObject.ResetBall();
 
     [Server]
-    private void Update()
+    private void FixedUpdate()
     {
         if (HasLaunched) return;
         

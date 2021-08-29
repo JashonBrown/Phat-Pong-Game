@@ -13,7 +13,6 @@ namespace Managers
             if (Instance == null) 
             {
                 Instance = this;
-                _players = new List<Player>();
                 DontDestroyOnLoad (this);
             } 
             else
@@ -24,11 +23,22 @@ namespace Managers
         }
         #endregion
     
-        [Header("Dependency Injects")]
+        [Header("Dependencies")]
         [SerializeField] private BrickManager _brickManager;
         [SerializeField] private ScoreManager _scoreManager;
+        [SerializeField] private WinManager _winManager;
 
         private List<Player> _players;
+
+        /// <summary>
+        /// Perform setup
+        /// </summary>
+        [Server]
+        public override void OnStartServer()
+        {
+            _players = new List<Player>();
+            _brickManager.OnAllBricksDestroyed += OnAllBricksDestroyed;
+        }
 
         /// <summary>
         /// Add a player to be cached
@@ -47,9 +57,13 @@ namespace Managers
             foreach (var player in _players)
                 player.ResetBall();
             
-            // NOTE: Reset balls first otherwise they occasionally break newly reset bricks
+            // TODO: Bricks are still sometimes broken when newly generated even though we reset the ball first?
             _brickManager.ResetBricks();
             _scoreManager.ResetScore();
+            _winManager.HideLabel();
         }
+
+        [Server]
+        private void OnAllBricksDestroyed() => _winManager.ShowLabel();
     }
 }

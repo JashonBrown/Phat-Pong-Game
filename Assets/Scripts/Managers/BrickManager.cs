@@ -24,6 +24,8 @@ namespace Managers
         /// </summary>
         private List<Brick> _bricks;
 
+        public Action OnAllBricksDestroyed;
+        
         public void Awake() => _bricks = new List<Brick>();
 
         /// <summary>
@@ -66,8 +68,12 @@ namespace Managers
         [Server]
         private void OnBrickDestroyed(Brick brick)
         {
-            _bricks.Remove(brick);
             _scoreManager.OnBrickDestroyed();
+            _bricks.Remove(brick);
+            
+            // Is game over?
+            if (_bricks.Count == 0)
+                OnAllBricksDestroyed?.Invoke();
         }
 
         /// <summary>
