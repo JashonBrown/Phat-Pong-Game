@@ -36,6 +36,13 @@ namespace Managers
                 ? PlayerSlot.Player1
                 : PlayerSlot.Player2;
             player.RpcSetSprite(slot);
+            
+            // Spawn ball for player
+            player.SpawnBall();
+            
+            // Start round if player is host
+            if (player.isLocalPlayer)
+                RoundManager.Instance.StartNewRound();
         }
         
         // TODO: Would usually perform some "OnDisconnect" clean up too

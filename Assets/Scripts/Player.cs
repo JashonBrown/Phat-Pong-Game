@@ -1,4 +1,3 @@
-using System;
 using Enums;
 using Managers;
 using Mirror;
@@ -24,13 +23,16 @@ public class Player : NetworkBehaviour
     /// </summary>
     public Vector3 BallSpawnLocation => _ballSpawnLocation.position;
 
-    public override void OnStartLocalPlayer() => CmdSpawnBall();
-    
     #region [Client Functions]
-
+    /// <summary>
+    /// Cache renderer
+    /// </summary>
     [Client]
     private void Awake() => Renderer = GetComponent<SpriteRenderer>();
 
+    /// <summary>
+    /// Process inputs if this is the local player
+    /// </summary>
     [Client]
     private void Update()
     {
@@ -103,23 +105,6 @@ public class Player : NetworkBehaviour
     private void CmdNewGame() => RoundManager.Instance.StartNewRound();
     
     /// <summary>
-    /// Sets up the ball on the server and spawns it on clients
-    /// </summary>
-    [Command]
-    private void CmdSpawnBall()
-    {
-        // Spawn ball
-        GameObject ballGo = Instantiate(_ballPrefab, _ballSpawnLocation.position, Quaternion.identity);
-        NetworkServer.Spawn(ballGo);
-        Ball = ballGo.GetComponent<Ball>();
-        
-        // Set properties
-        Ball.SetOwner(netId);
-        Ball.RpcSetSprite(isLocalPlayer ? PlayerSlot.Player1 : PlayerSlot.Player2);
-        ResetBall();
-    }
-    
-    /// <summary>
     /// Launch the ball on the server (clients update through NetworkTransforms)
     /// </summary>
     [Command]
@@ -134,6 +119,23 @@ public class Player : NetworkBehaviour
     #endregion
 
     #region [Server Functions]
+    /// <summary>
+    /// Sets up the ball on the server and spawns it on clients
+    /// </summary>
+    [Server]
+    public void SpawnBall()
+    {
+        // Spawn ball
+        GameObject ballGo = Instantiate(_ballPrefab, _ballSpawnLocation.position, Quaternion.identity);
+        NetworkServer.Spawn(ballGo);
+        Ball = ballGo.GetComponent<Ball>();
+        
+        // Set properties
+        Ball.SetOwner(netId);
+        Ball.RpcSetSprite(isLocalPlayer ? PlayerSlot.Player1 : PlayerSlot.Player2);
+        ResetBall();
+    }
+    
     /// <summary>
     /// Reset the ball on the server and clients
     /// </summary>
