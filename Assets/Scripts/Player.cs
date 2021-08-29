@@ -1,19 +1,36 @@
+using System;
+using Enums;
+using Managers;
 using Mirror;
 using UnityEngine;
 
+[RequireComponent(typeof(SpriteRenderer))]
 public class Player : NetworkBehaviour
 {
     [Header("Sprites")]
-    [SerializeField] private Sprite _player1Sprite;
-    [SerializeField] private Sprite _player2Sprite;
+    [SerializeField] private Sprite _player1PaddleSprite;
+    [SerializeField] private Sprite _player2PaddleSprite;
     
     [Header("Misc")]
     [SerializeField] private GameObject _ballPrefab;
     [SerializeField] private Transform _ballSpawnLocation;
 
+    private SpriteRenderer Renderer { get; set; }
     private Ball Ball { get; set; }
     private bool HasBall { get; set; }
+
+    /// <summary>
+    /// Getter for the balls spawn location relative to the player
+    /// </summary>
+    public Vector3 BallSpawnLocation => _ballSpawnLocation.position;
+
+    public override void OnStartLocalPlayer() => CmdSpawnBall();
     
+    #region [Client Functions]
+
+    [Client]
+    private void Awake() => Renderer = GetComponent<SpriteRenderer>();
+
     [Client]
     private void Update()
     {
@@ -22,12 +39,7 @@ public class Player : NetworkBehaviour
 
         HandleInput();
     }
-
-    /// <summary>
-    /// Getter for the balls spawn location relative to the player
-    /// </summary>
-    public Vector3 BallSpawnLocation => _ballSpawnLocation.position;
-
+    
     /// <summary>
     /// Handles checking all the controller inputs from the player
     /// 
@@ -56,7 +68,7 @@ public class Player : NetworkBehaviour
     /// </summary>
     [Client]
     private void OnSpaceKeyPressed() => CmdLaunchBall();
-    
+
     /// <summary>
     /// Event called the frame that the 'R' key is pressed
     ///
@@ -69,33 +81,67 @@ public class Player : NetworkBehaviour
     {
         // Only the host can restart the game
         if (!isServer) return;
-        
-        // TODO: Send restart match command to server
-    }
 
+        CmdNewGame();
+    }
+    #endregion
+
+    #region [Client RPCs]
+    /// <summary>
+    /// Sets this players paddle sprite
+    /// </summary>
+    [ClientRpc]
+    public void RpcSetSprite(PlayerSlot slot) => Renderer.sprite = (slot == PlayerSlot.Player1) 
+        ? _player1PaddleSprite : _player2PaddleSprite;
+    #endregion
+    
+    #region [Commands]
+    /// <summary>
+    /// Reset ball then passthrough to round manager
+    /// </summary>
+    [Command]
+    private void CmdNewGame() => RoundManager.Instance.StartNewRound();
+    
+    /// <summary>
+    /// Sets up the ball on the server and spawns it on clients
+    /// </summary>
+    [Command]
+    private void CmdSpawnBall()
+    {
+        // Spawn ball
+        GameObject ballGo = Instantiate(_ballPrefab, _ballSpawnLocation.position, Quaternion.identity);
+        NetworkServer.Spawn(ballGo);
+        Ball = ballGo.GetComponent<Ball>();
+        
+        // Set properties
+        Ball.SetOwner(netId);
+        Ball.RpcSetSprite(isLocalPlayer ? PlayerSlot.Player1 : PlayerSlot.Player2);
+        ResetBall();
+    }
+    
+    /// <summary>
+    /// Launch the ball on the server (clients update through NetworkTransforms)
+    /// </summary>
     [Command]
     private void CmdLaunchBall()
     {
         // Skip if no ball
         if (!HasBall) return;
         
-        Ball.RpcLaunch();
+        Ball.Launch();
         HasBall = false;
     }
+    #endregion
 
+    #region [Server Functions]
+    /// <summary>
+    /// Reset the ball on the server and clients
+    /// </summary>
     [Server]
-    public void OnBallRespawn() => HasBall = true;
-
-    [Command]
-    private void CmdSpawnBall()
+    public void ResetBall()
     {
-        GameObject ballGo = Instantiate(_ballPrefab, _ballSpawnLocation.position, Quaternion.identity);
-        NetworkServer.Spawn(ballGo);
-        Ball = ballGo.GetComponent<Ball>();
-        Ball.ServerSetOwner(netId);
         Ball.RpcRespawn();
         HasBall = true;
     }
-
-    public override void OnStartLocalPlayer() => CmdSpawnBall();
+    #endregion
 }

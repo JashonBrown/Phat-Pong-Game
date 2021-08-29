@@ -1,13 +1,16 @@
+using Enums;
+using Interfaces;
 using Mirror;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-// [RequireComponent(typeof(Rigidbody2D))]
+[RequireComponent(typeof(Rigidbody2D))]
+[RequireComponent(typeof(SpriteRenderer))]
 public class Ball : NetworkBehaviour
 {
     [Header("Sprites")]
-    [SerializeField] private Sprite _ball1Sprite;
-    [SerializeField] private Sprite _ball2Sprite;
+    [SerializeField] private Sprite _player1BallSprite;
+    [SerializeField] private Sprite _player2BallSprite;
     
     /// <summary>
     /// The damage this ball deals when colliding with an object
@@ -24,6 +27,11 @@ public class Ball : NetworkBehaviour
     /// The rigidbody of this ball
     /// </summary>
     private Rigidbody2D Rb { get; set; }
+    
+    /// <summary>
+    /// The sprite renderer of this ball
+    /// </summary>
+    private SpriteRenderer Renderer { get; set; }
 
     /// <summary>
     /// The ID of the player that owns this ball
@@ -39,31 +47,32 @@ public class Ball : NetworkBehaviour
     /// Has the ball been launched yet?
     /// </summary>
     private bool HasLaunched { get; set; }
-    
-    private void Awake() => Rb = GetComponent<Rigidbody2D>();
 
-    /// <summary>
-    /// Assign the player owner of this ball
-    /// </summary>
-    /// <param name="id"></param>
-    [Server]
-    public void ServerSetOwner(uint id)
+    private void Awake()
     {
-        OwnerId = id;
-        var playerGo = NetworkIdentity.spawned[id].gameObject; // Dunno if this is the best way too access objects via ID
+        // Cache objects
+        Rb = GetComponent<Rigidbody2D>();
+        Renderer = GetComponent<SpriteRenderer>();
+    }
+
+    #region [Server Functions]
+    /// <summary>
+    /// Set owner properties
+    /// </summary>
+    /// <param name="ownerId"></param>
+    [Server]
+    public void SetOwner(uint ownerId)
+    {
+        OwnerId = ownerId;
+        var playerGo = NetworkIdentity.spawned[ownerId].gameObject; // Dunno if this is the best way to access objects via netID
         OwnerObject = playerGo.GetComponent<Player>();
     }
-
-    [ClientRpc]
-    public void RpcRespawn()
+    
+    [Server]
+    public void Launch()
     {
-        Rb.velocity = Vector2.zero;
-        HasLaunched = false;
-    }
-
-    [ClientRpc]
-    public void RpcLaunch()
-    {
+        Rb.velocity = Vector2.zero; // Zero out velocity just in case
+        
         Transform cachedTransform;
         (cachedTransform = transform).up = new Vector3(Random.Range(-1f, 1f), 1f, 0f); // Set up direction to something between -45 deg and +45 deg
 
@@ -87,21 +96,46 @@ public class Ball : NetworkBehaviour
         damageable?.TakeDamage(_damage);
     }
 
-    // NOTE: Only 1 trigger exists so will assume we have hit the red-zone
+    /// <summary>
+    /// Reset ball if it collides with the bottom red-zone
+    /// </summary>
+    /// <param name="other"></param>
     [Server]
-    private void OnTriggerEnter2D(Collider2D other)
-    {
-        OwnerObject.OnBallRespawn();
-        RpcRespawn();
-    }
+    private void OnTriggerEnter2D(Collider2D other) => OwnerObject.ResetBall();
 
     [Server]
     private void Update()
     {
-        if (!HasLaunched)
-            RpcSetPosition(OwnerObject.BallSpawnLocation);
+        if (HasLaunched) return;
+        
+        Rb.velocity = Vector2.zero; // If cross-player collision is on, when th balls collide it adds velocity thus we zero it out here
+        RpcSetPosition(OwnerObject.BallSpawnLocation);
+    }
+    #endregion
+    
+    #region [Client RPCs]
+    /// <summary>
+    /// Set balls sprite depending on whether if the local player owns it or not
+    /// </summary>
+    [ClientRpc]
+    public void RpcSetSprite(PlayerSlot slot) => Renderer.sprite = slot == PlayerSlot.Player1 
+        ? _player1BallSprite : _player2BallSprite;
+
+    /// <summary>
+    /// Resets flags and physics for the ball on clients
+    /// </summary>
+    [ClientRpc]
+    public void RpcRespawn()
+    {
+        Rb.velocity = Vector2.zero;
+        HasLaunched = false;
     }
 
+    /// <summary>
+    /// Teleports this ball to the provided location on clients
+    /// </summary>
+    /// <param name="position"></param>
     [ClientRpc]
     private void RpcSetPosition(Vector3 position) => transform.position = position;
+    #endregion
 }

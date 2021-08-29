@@ -1,11 +1,11 @@
 using System;
+using Enums;
+using Interfaces;
 using Mirror;
 using UnityEngine;
 
 public class Brick : NetworkBehaviour, IHealth
 {
-    public enum BrickLayer { Layer1, Layer2, Layer3, Layer4, Layer5 }
-    
     [Header("Sprites")]
     [SerializeField] private Sprite _sprite1;
     [SerializeField] private Sprite _sprite2;
@@ -26,33 +26,49 @@ public class Brick : NetworkBehaviour, IHealth
     /// <summary>
     /// Event invoked when this brick is destroyed
     /// </summary>
-    public event Action OnDeath;
+    public Action<Brick> OnBrickDestroyed;
 
-    /// <summary>
-    /// The layer this brick is in
-    /// </summary>
-    private BrickLayer Layer { get; set; }
-    
     /// <summary>
     /// The sprite renderer for this brick
     /// </summary>
     private SpriteRenderer Renderer { get; set; }
+
+    #region [Client Functions]
+    [Client]
+    private void Awake() => Renderer = GetComponent<SpriteRenderer>();
     
+    /// <summary>
+    /// Retrieve the appropriate sprite based on the provided layer
+    /// </summary>
+    /// <param name="layer"></param>
+    /// <returns></returns>
+    [Client]
+    private Sprite GetSpriteForLayer(BrickLayer layer)
+    {
+        return layer switch
+        {
+            BrickLayer.First => _sprite1,
+            BrickLayer.Second => _sprite2,
+            BrickLayer.Third => _sprite3,
+            BrickLayer.Forth => _sprite4,
+            BrickLayer.Fifth => _sprite5,
+            _ => throw new Exception("Invalid brick layer type")
+        };
+    }
+    #endregion
+
+    #region [Server Functions]
     /// <summary>
     /// Performs setup of this brick
     /// </summary>
     /// <param name="startingHealth"></param>
-    /// <param name="layer"></param>
     [Server]
-    public void Init(int startingHealth, BrickLayer layer)
+    public void SetHealth(int startingHealth)
     {
         StartingHealth = startingHealth;
         CurrentHealth = startingHealth;
-        Layer = layer;
-        Renderer = GetComponent<SpriteRenderer>();
-        Renderer.sprite = GetSpriteForLayer(layer);
     }
-
+    
     /// <summary>
     /// Decrement health and perform death checks
     /// </summary>
@@ -72,33 +88,24 @@ public class Brick : NetworkBehaviour, IHealth
     [Server]
     private void BreakBrick()
     {
-        OnDeath?.Invoke();
+        OnBrickDestroyed?.Invoke(this);
         // TODO: Register scoreboard to increase total
         RpcDestroy();
     }
-    
+    #endregion
+
+    #region [Client RPCs]
     /// <summary>
     /// Destroys this brick on clients
     /// </summary>
     [ClientRpc]
-    private void RpcDestroy() => NetworkServer.Destroy(gameObject);
-
+    public void RpcDestroy() => NetworkServer.Destroy(gameObject);
+    
     /// <summary>
-    /// Retrieve the appropriate sprite based on the provided layer
+    /// Sets the correct sprite based on the provided layer
     /// </summary>
     /// <param name="layer"></param>
-    /// <returns></returns>
-    [Server]
-    private Sprite GetSpriteForLayer(BrickLayer layer)
-    {
-        return layer switch
-        {
-            BrickLayer.Layer1 => _sprite1,
-            BrickLayer.Layer2 => _sprite2,
-            BrickLayer.Layer3 => _sprite3,
-            BrickLayer.Layer4 => _sprite4,
-            BrickLayer.Layer5 => _sprite5,
-            _ => throw new Exception("Invalid brick layer type")
-        };
-    }
+    [ClientRpc]
+    public void RPCSetSpriteUsingLayer(BrickLayer layer) => Renderer.sprite = GetSpriteForLayer(layer);
+    #endregion
 }
