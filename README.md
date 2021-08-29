@@ -14,3 +14,5 @@ Only the host can restart the game.
 Ball has some noticeable latency issues due to it being controlled server side. To reduce it I'd likely let the client control the initial location of the ball (whilst player is in possession of the ball) and once launched, let the server manage it. This would hide the most obvious displays of lag.
 
 I left cross-player collision on since it felt more interesting (balls can collide with other balls and other players paddles).
+
+Requires port-forwarding if playing with someone outside your local network.
