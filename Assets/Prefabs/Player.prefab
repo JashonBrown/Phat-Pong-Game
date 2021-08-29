@@ -103,13 +103,13 @@ MonoBehaviour:
   syncPosition: 1
   syncRotation: 0
   syncScale: 0
-  interpolatePosition: 1
+  interpolatePosition: 0
   interpolateRotation: 0
   interpolateScale: 0
   bufferTimeMultiplier: 3
   bufferSizeLimit: 64
   catchupThreshold: 6
-  catchupMultiplier: 0.113
+  catchupMultiplier: 0.1
   showGizmos: 0
   showOverlay: 0
   overlayColor: {r: 0, g: 0, b: 0, a: 0.5}

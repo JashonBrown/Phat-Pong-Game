@@ -1626,8 +1626,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   showGUI: 1
-  offsetX: 80
-  offsetY: 950
+  offsetX: 25
+  offsetY: 600
 --- !u!114 &1895837967
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1643,7 +1643,7 @@ MonoBehaviour:
   Port: 7777
   DualMode: 1
   NoDelay: 1
-  Interval: 10
+  Interval: 0
   Timeout: 10000
   FastResend: 2
   CongestionWindow: 0
@@ -1669,7 +1669,7 @@ MonoBehaviour:
   PersistNetworkManagerToOfflineScene: 0
   runInBackground: 1
   autoStartServerBuild: 1
-  serverTickRate: 30
+  serverTickRate: 60
   offlineScene: 
   onlineScene: 
   transport: {fileID: 1895837967}
