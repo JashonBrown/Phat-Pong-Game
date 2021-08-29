@@ -53,7 +53,7 @@ namespace Managers
                 
                     // Set properties
                     brick.SetHealth(10);
-                    brick.RPCSetSpriteUsingLayer(ConvertIndexToLayer(layer));
+                    brick.Layer = ConvertIndexToLayer(layer);
                     brick.OnBrickDestroyed += OnBrickDestroyed;
                 }
             }

@@ -12,6 +12,13 @@ public class Brick : NetworkBehaviour, IHealth
     [SerializeField] private Sprite _sprite3;
     [SerializeField] private Sprite _sprite4;
     [SerializeField] private Sprite _sprite5;
+
+    /// <summary>
+    /// The layer this brick resides in.
+    /// NOTE: Sync var used instead of RPC in order to update late joining clients
+    /// </summary>
+    [SyncVar(hook=nameof(OnUpdateLayer))]
+    public BrickLayer Layer;
  
     /// <summary>
     /// This bricks starting health
@@ -55,6 +62,15 @@ public class Brick : NetworkBehaviour, IHealth
             _ => throw new Exception("Invalid brick layer type")
         };
     }
+
+    /// <summary>
+    /// Sets the correct sprite based on the layer
+    /// </summary>
+    /// <param name="oldLayer"></param>
+    /// <param name="newLayer"></param>
+    [Client]
+    private void OnUpdateLayer(BrickLayer oldLayer, BrickLayer newLayer) =>
+        Renderer.sprite = GetSpriteForLayer(newLayer);
     #endregion
 
     #region [Server Functions]
@@ -100,12 +116,5 @@ public class Brick : NetworkBehaviour, IHealth
     /// </summary>
     [ClientRpc]
     public void RpcDestroy() => NetworkServer.Destroy(gameObject);
-    
-    /// <summary>
-    /// Sets the correct sprite based on the provided layer
-    /// </summary>
-    /// <param name="layer"></param>
-    [ClientRpc]
-    public void RPCSetSpriteUsingLayer(BrickLayer layer) => Renderer.sprite = GetSpriteForLayer(layer);
     #endregion
 }
